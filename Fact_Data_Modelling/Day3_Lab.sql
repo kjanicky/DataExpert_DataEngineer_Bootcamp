@@ -39,4 +39,16 @@ ON CONFLICT (user_id, month_start, metric_name)
 DO
 	UPDATE SET metric_array = EXCLUDED.metric_array;
 
-	SELECT * FROM array_metrics
+WITH agg AS (
+SELECT metric_name, month_start, ARRAY[SUM(metric_array[1]),
+									SUM(metric_array[2]),
+									SUM(metric_array[3])] as summed_array
+			FROM array_metrics
+			GROUP BY metric_name, month_start
+)
+
+SELECT metric_name,
+	month_start + CAST(CAST(index - 1 AS TEXT) || 'day' AS INTERVAL)
+	FROM agg
+	CROSS JOIN UNNEST(agg.summed_array)
+		WITH ORDINALITY AS a(elem, index)
